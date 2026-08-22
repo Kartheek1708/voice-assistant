@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Voice Assistant</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 500px;
+            margin: 50px auto;
+            text-align: center;
+            background: #f4f4f4;
+            padding: 20px;
+        }
+
+        button {
+            padding: 15px 30px;
+            font-size: 18px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px;
+        }
+
+        #recordBtn {
+            background: #e74c3c;
+            color: white;
+        }
+
+        #recordBtn.recording {
+            background: #27ae60;
+        }
+
+        .box {
+            background: white;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+            text-align: left;
+            min-height: 20px;
+        }
+
+        h3 {
+            margin: 5px 0;
+            color: #555;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>🎙️ Voice Assistant</h1>
+    <button id="recordBtn">🎤 Start Recording</button>
+
+    <div class="box">
+        <h3>You said:</h3>
+        <p id="transcript">-</p>
+    </div>
+
+    <div class="box">
+        <h3>AI Answer:</h3>
+        <p id="answer">-</p>
+    </div>
+
+    <audio id="audioPlayer" controls style="width:100%; display:none;"></audio>
+
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+        let isRecording = false;
+
+        const recordBtn = document.getElementById("recordBtn");
+
+        recordBtn.addEventListener("click", async () => {
+            if (!isRecording) {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+                mediaRecorder.onstop = sendAudio;
+
+                mediaRecorder.start();
+                isRecording = true;
+                recordBtn.textContent = "⏹️ Stop Recording";
+                recordBtn.classList.add("recording");
+            } else {
+                mediaRecorder.stop();
+                isRecording = false;
+                recordBtn.textContent = "🎤 Start Recording";
+                recordBtn.classList.remove("recording");
+            }
+        });
+
+        async function sendAudio() {
+            document.getElementById("transcript").textContent = "Processing...";
+            document.getElementById("answer").textContent = "Processing...";
+
+            const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+            const formData = new FormData();
+            formData.append("audio", audioBlob, "recording.webm");
+
+            try {
+                const response = await fetch("/api/voice", {
+                    method: "POST",
+                    body: formData
+                });
+                const data = await response.json();
+
+                document.getElementById("transcript").textContent = data.transcript;
+                document.getElementById("answer").textContent = data.answer;
+
+                const audioPlayer = document.getElementById("audioPlayer");
+                audioPlayer.src = data.audio_url;
+                audioPlayer.style.display = "block";
+                audioPlayer.play();
+            } catch (err) {
+                document.getElementById("transcript").textContent = "Error occurred";
+                document.getElementById("answer").textContent = "Please try again.";
+            }
+        }
+    </script>
+
+</body>
+
+</html>
