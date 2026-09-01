@@ -5,11 +5,12 @@ from pathlib import Path
 import speech_recognition as sr
 from pydub import AudioSegment
 import google.generativeai as genai
-from gtts import gTTS
+import edge_tts
 import os
 import re
 from dotenv import load_dotenv
 from fastapi.staticfiles import StaticFiles
+from uuid import uuid4
 
 
 load_dotenv()
@@ -47,22 +48,26 @@ def transcribe_audio(file_path: Path) -> str:
 def answer_from_text(user_text: str) -> str:
     """Text ni Gemini AI ki pampi answer techukovadam (LLM)"""
     model = genai.GenerativeModel("gemini-2.5-flash")
-    response = model.generate_content(user_text)
-    text = response.text.strip()
-    
+    try:
+        response = model.generate_content(user_text)
+        text = response.text.strip()
+    except Exception as e:
+        if "429" in str(e) or "quota" in str(e).lower():
+            text = "Sorry, too many requests right now. Please wait a minute and try again."
+        else:
+            text = "Sorry, something went wrong. Please try again."    
     
     text = re.sub(r'\*\*(.*?)\*\*', r'\1', text)  
     text = re.sub(r'\*(.*?)\*', r'\1', text)       
     text = re.sub(r'#+\s*', '', text)               
-    
     return text
 
-def generate_speech(text: str) -> Path:
-    """Text ni audio ga convert cheyadam (TTS)"""
-    output_path = Path("data") / "output.mp3"
-    tts = gTTS(text=text, lang="en")
-    tts.save(str(output_path))
-    return output_path
+async def generate_speech(text: str) -> Path:
+    """ Text will be convert into Audio By using edge_tts """
+    output_path  = Path("data") / f"response_{uuid4().hex}.mp3"
+    communicate = edge_tts.Communicate(text, voice="en-US-AriaNeural")
+    await communicate.save(str(output_path))
+    return output_path 
 
 
 @app.post("/api/transcribe")
@@ -87,7 +92,7 @@ async def voice_pipeline(audio: UploadFile = File(...)):
         temp.write_bytes(await audio.read())
         transcript = transcribe_audio(temp)
         answer = answer_from_text(transcript)
-        output = generate_speech(answer)
+        output = await generate_speech(answer)
         return {
             "transcript": transcript,
             "answer": answer,
