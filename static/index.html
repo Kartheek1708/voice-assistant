@@ -328,7 +328,7 @@
       formData.append('audio', blob, 'input.webm');
 
       try {
-        const res = await fetch('/api/voice_pipeline', { method: 'POST', body: formData });
+       const res = await fetch('/api/voice', { method: 'POST', body: formData });
         const data = await res.json();
         showResult(data, thinkingBubble);
       } catch (err) {
