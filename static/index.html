@@ -1,127 +1,356 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <title>Voice Assistant</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 500px;
-            margin: 50px auto;
-            text-align: center;
-            background: #f4f4f4;
-            padding: 20px;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voice Assistant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0F1115;
+    --surface: #171A21;
+    --surface-raised: #1E222B;
+    --line: #2A2F3A;
+    --text: #F2F1ED;
+    --text-dim: #8A8F9C;
+    --accent: #4FD1C5;
+    --accent-dim: #2C6E68;
+    --record: #FF6B5C;
+    --record-dim: #7A3A34;
+  }
 
-        button {
-            padding: 15px 30px;
-            font-size: 18px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            margin: 10px;
-        }
+  * { box-sizing: border-box; }
 
-        #recordBtn {
-            background: #e74c3c;
-            color: white;
-        }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 20px 80px;
+  }
 
-        #recordBtn.recording {
-            background: #27ae60;
-        }
+  header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
 
-        .box {
-            background: white;
-            padding: 15px;
-            margin: 15px 0;
-            border-radius: 8px;
-            text-align: left;
-            min-height: 20px;
-        }
+  header h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 28px;
+    margin: 0 0 6px;
+    letter-spacing: -0.02em;
+  }
 
-        h3 {
-            margin: 5px 0;
-            color: #555;
-        }
-    </style>
+  header p {
+    color: var(--text-dim);
+    font-size: 14px;
+    margin: 0;
+  }
+
+  /* --- Mic orb + waveform --- */
+  .mic-stage {
+    position: relative;
+    width: 220px;
+    height: 220px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 36px;
+  }
+
+  .ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    opacity: 0;
+    transform: scale(0.8);
+  }
+
+  .mic-stage.recording .ring {
+    animation: ripple 1.8s ease-out infinite;
+    border-color: var(--record-dim);
+  }
+  .mic-stage.recording .ring:nth-child(2) { animation-delay: 0.5s; }
+  .mic-stage.recording .ring:nth-child(3) { animation-delay: 1s; }
+
+  @keyframes ripple {
+    0%   { opacity: 0.6; transform: scale(0.75); }
+    100% { opacity: 0; transform: scale(1.15); }
+  }
+
+  #micButton {
+    position: relative;
+    z-index: 2;
+    width: 116px;
+    height: 116px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    background: var(--surface-raised);
+    box-shadow: 0 0 0 1px var(--line), 0 8px 24px rgba(0,0,0,0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.25s ease, box-shadow 0.25s ease;
+  }
+
+  #micButton:hover { box-shadow: 0 0 0 1px var(--accent-dim), 0 8px 24px rgba(0,0,0,0.4); }
+
+  .mic-stage.recording #micButton {
+    background: var(--record-dim);
+    box-shadow: 0 0 0 1px var(--record), 0 0 32px rgba(255,107,92,0.35);
+  }
+
+  .mic-glyph {
+    width: 30px;
+    height: 30px;
+    fill: var(--accent);
+  }
+  .mic-stage.recording .mic-glyph { fill: var(--record); }
+
+  /* equalizer bars shown while recording */
+  .bars {
+    position: absolute;
+    z-index: 2;
+    display: none;
+    align-items: flex-end;
+    gap: 4px;
+    height: 26px;
+  }
+  .mic-stage.recording .bars { display: flex; }
+  .mic-stage.recording #micButton { display: none; }
+  .mic-stage.recording .ring { border-color: var(--record-dim); }
+
+  .bars span {
+    width: 4px;
+    background: var(--record);
+    border-radius: 2px;
+    animation: bar 0.9s ease-in-out infinite;
+  }
+  .bars span:nth-child(1){ animation-delay: 0s; }
+  .bars span:nth-child(2){ animation-delay: 0.15s; }
+  .bars span:nth-child(3){ animation-delay: 0.3s; }
+  .bars span:nth-child(4){ animation-delay: 0.45s; }
+  .bars span:nth-child(5){ animation-delay: 0.6s; }
+
+  @keyframes bar {
+    0%, 100% { height: 8px; }
+    50% { height: 26px; }
+  }
+
+  .status {
+    font-size: 13px;
+    color: var(--text-dim);
+    min-height: 18px;
+    margin-bottom: 8px;
+  }
+
+  #recordBtn {
+    appearance: none;
+    border: none;
+    background: none;
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 10px 22px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    transition: border-color 0.2s ease, color 0.2s ease;
+  }
+  #recordBtn:hover { border-color: var(--accent-dim); color: var(--accent); }
+  .mic-stage.recording ~ #recordBtn { color: var(--record); border-color: var(--record-dim); }
+
+  /* --- Conversation --- */
+  .conversation {
+    width: 100%;
+    max-width: 560px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-top: 36px;
+  }
+
+  .bubble {
+    max-width: 78%;
+    padding: 14px 18px;
+    border-radius: 16px;
+    font-size: 15px;
+    line-height: 1.5;
+    opacity: 0;
+    animation: rise 0.35s ease forwards;
+  }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .bubble.user {
+    align-self: flex-end;
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-bottom-right-radius: 4px;
+  }
+
+  .bubble.ai {
+    align-self: flex-start;
+    background: transparent;
+    border: 1px solid var(--accent-dim);
+    border-bottom-left-radius: 4px;
+    color: var(--text);
+  }
+
+  .bubble .label {
+    display: block;
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 5px;
+  }
+
+  /* --- Loading dots inside AI bubble --- */
+  .thinking { display: flex; gap: 5px; padding: 4px 0; }
+  .thinking span {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent);
+    animation: dot 1.2s ease-in-out infinite;
+  }
+  .thinking span:nth-child(2){ animation-delay: 0.2s; }
+  .thinking span:nth-child(3){ animation-delay: 0.4s; }
+  @keyframes dot {
+    0%, 80%, 100% { opacity: 0.25; transform: scale(0.85); }
+    40% { opacity: 1; transform: scale(1); }
+  }
+
+  /* --- Audio player --- */
+  .audio-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 10px;
+  }
+  audio { height: 32px; }
+
+  #downloadLink {
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 13px;
+    border-bottom: 1px solid var(--accent-dim);
+  }
+  #downloadLink:hover { border-color: var(--accent); }
+</style>
 </head>
-
 <body>
 
-    <h1>🎙️ Voice Assistant</h1>
-    <button id="recordBtn">🎤 Start Recording</button>
+  <header>
+    <h1>Voice Assistant</h1>
+    <p>Tap the mic, ask a question, hear it answered.</p>
+  </header>
 
-    <div class="box">
-        <h3>You said:</h3>
-        <p id="transcript">-</p>
+  <div class="mic-stage" id="micStage">
+    <div class="ring"></div>
+    <div class="ring"></div>
+    <div class="ring"></div>
+    <button id="micButton" aria-label="Start recording">
+      <svg class="mic-glyph" viewBox="0 0 24 24"><path d="M12 15a3 3 0 003-3V6a3 3 0 10-6 0v6a3 3 0 003 3z"/><path d="M19 11a1 1 0 00-2 0 5 5 0 01-10 0 1 1 0 00-2 0 7 7 0 006 6.92V20H9a1 1 0 000 2h6a1 1 0 000-2h-2v-2.08A7 7 0 0019 11z"/></svg>
+    </button>
+    <div class="bars">
+      <span></span><span></span><span></span><span></span><span></span>
     </div>
+  </div>
 
-    <div class="box">
-        <h3>AI Answer:</h3>
-        <p id="answer">-</p>
-    </div>
+  <div class="status" id="status">Ready when you are</div>
+  <button id="recordBtn">Start Recording</button>
 
-    <audio id="audioPlayer" controls style="width:100%; display:none;"></audio>
+  <div class="conversation" id="conversation"></div>
 
-    <script>
-        let mediaRecorder;
-        let audioChunks = [];
-        let isRecording = false;
+  <script>
+    const micStage = document.getElementById('micStage');
+    const recordBtn = document.getElementById('recordBtn');
+    const micButton = document.getElementById('micButton');
+    const statusEl = document.getElementById('status');
+    const conversation = document.getElementById('conversation');
 
-        const recordBtn = document.getElementById("recordBtn");
+    let mediaRecorder;
+    let chunks = [];
+    let isRecording = false;
 
-        recordBtn.addEventListener("click", async () => {
-            if (!isRecording) {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream);
-                audioChunks = [];
+    function addBubble(role, html) {
+      const div = document.createElement('div');
+      div.className = 'bubble ' + role;
+      div.innerHTML = html;
+      conversation.appendChild(div);
+      return div;
+    }
 
-                mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
-                mediaRecorder.onstop = sendAudio;
+    async function startRecording() {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      chunks = [];
+      mediaRecorder.ondataavailable = e => chunks.push(e.data);
+      mediaRecorder.onstop = () => sendAudio(new Blob(chunks, { type: 'audio/webm' }));
+      mediaRecorder.start();
 
-                mediaRecorder.start();
-                isRecording = true;
-                recordBtn.textContent = "⏹️ Stop Recording";
-                recordBtn.classList.add("recording");
-            } else {
-                mediaRecorder.stop();
-                isRecording = false;
-                recordBtn.textContent = "🎤 Start Recording";
-                recordBtn.classList.remove("recording");
-            }
-        });
+      isRecording = true;
+      micStage.classList.add('recording');
+      recordBtn.textContent = 'Stop Recording';
+      statusEl.textContent = 'Listening…';
+    }
 
-        async function sendAudio() {
-            document.getElementById("transcript").textContent = "Processing...";
-            document.getElementById("answer").textContent = "Processing...";
+    function stopRecording() {
+      mediaRecorder.stop();
+      mediaRecorder.stream.getTracks().forEach(t => t.stop());
+      isRecording = false;
+      micStage.classList.remove('recording');
+      recordBtn.textContent = 'Start Recording';
+      statusEl.textContent = 'Processing…';
+    }
 
-            const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
-            const formData = new FormData();
-            formData.append("audio", audioBlob, "recording.webm");
+    function toggleRecording() {
+      isRecording ? stopRecording() : startRecording();
+    }
 
-            try {
-                const response = await fetch("/api/voice", {
-                    method: "POST",
-                    body: formData
-                });
-                const data = await response.json();
+    micButton.addEventListener('click', toggleRecording);
+    recordBtn.addEventListener('click', toggleRecording);
 
-                document.getElementById("transcript").textContent = data.transcript;
-                document.getElementById("answer").textContent = data.answer;
+    async function sendAudio(blob) {
+      const thinkingBubble = addBubble('ai', '<span class="label">Assistant</span><div class="thinking"><span></span><span></span><span></span></div>');
 
-                const audioPlayer = document.getElementById("audioPlayer");
-                audioPlayer.src = data.audio_url;
-                audioPlayer.style.display = "block";
-                audioPlayer.play();
-            } catch (err) {
-                document.getElementById("transcript").textContent = "Error occurred";
-                document.getElementById("answer").textContent = "Please try again.";
-            }
-        }
-    </script>
+      const formData = new FormData();
+      formData.append('audio', blob, 'input.webm');
 
+      try {
+        const res = await fetch('/api/voice_pipeline', { method: 'POST', body: formData });
+        const data = await res.json();
+        showResult(data, thinkingBubble);
+      } catch (err) {
+        thinkingBubble.innerHTML = '<span class="label">Assistant</span>Something went wrong. Try again.';
+        statusEl.textContent = 'Ready when you are';
+      }
+    }
+
+    function showResult(d, thinkingBubble) {
+      // user's transcribed question, inserted above the AI bubble
+      const userBubble = addBubble('user', '<span class="label">You</span>' + d.transcript);
+      conversation.insertBefore(userBubble, thinkingBubble);
+
+      thinkingBubble.innerHTML =
+        '<span class="label">Assistant</span>' + d.answer +
+        '<div class="audio-row">' +
+          '<audio id="responseAudio" controls autoplay src="' + d.audio_url + '"></audio>' +
+          '<a id="downloadLink" href="' + d.audio_url + '" download>Download</a>' +
+        '</div>';
+
+      statusEl.textContent = 'Ready when you are';
+    }
+  </script>
 </body>
-
 </html>
